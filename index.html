@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Babylon.js Splat Viewer</title>
+    <title>Babylon.js Point Cloud Viewer</title>
     <style>
         html, body {
             overflow: hidden;
@@ -37,7 +37,7 @@
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
-    <input type="file" id="fileInput" accept=".splat">
+    <input type="file" id="fileInput" accept=".splat,.ply">
     <div id="loadingText">Loading...</div>
 
     <script>
@@ -45,12 +45,12 @@
         const engine = new BABYLON.Engine(canvas, true);
         const loadingText = document.getElementById("loadingText");
         let scene;
-        let splatMesh;
+        let pointCloud;
 
         const createScene = function() {
             const scene = new BABYLON.Scene(engine);
             
-            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 3, BABYLON.Vector3.Zero(), scene);
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 10, BABYLON.Vector3.Zero(), scene);
             camera.attachControl(canvas, true);
             
             const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
@@ -58,23 +58,35 @@
             return scene;
         };
 
-        const loadSplatFile = async function(file) {
+        const loadPointCloudFile = async function(file) {
             loadingText.style.display = "block";
             try {
-                if (splatMesh) {
-                    splatMesh.dispose();
+                if (pointCloud) {
+                    pointCloud.dispose();
                 }
 
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     try {
                         const arrayBuffer = e.target.result;
-                        splatMesh = new BABYLON.GaussianSplatting("splat", scene);
-                        await splatMesh.loadFromArrayBuffer(arrayBuffer);
+                        const positions = new Float32Array(arrayBuffer);
+                        const pointsCount = positions.length / 3;
+
+                        const pcs = new BABYLON.PointsCloudSystem("pcs", 1, scene);
+                        pcs.addPoints(pointsCount, (particle, i) => {
+                            particle.position = new BABYLON.Vector3(
+                                positions[i * 3],
+                                positions[i * 3 + 1],
+                                positions[i * 3 + 2]
+                            );
+                            // You can set color here if available in your data
+                            particle.color = new BABYLON.Color4(1, 1, 1, 1);
+                        });
+                        pointCloud = await pcs.buildMeshAsync();
                         console.log("File loaded successfully");
                     } catch (error) {
-                        console.error("Error loading splat data:", error);
-                        alert("Error loading splat data. Check console for details.");
+                        console.error("Error loading point cloud data:", error);
+                        alert("Error loading point cloud data. Check console for details.");
                     } finally {
                         loadingText.style.display = "none";
                     }
@@ -86,7 +98,7 @@
                 };
                 reader.readAsArrayBuffer(file);
             } catch (error) {
-                console.error("Error in loadSplatFile:", error);
+                console.error("Error in loadPointCloudFile:", error);
                 alert("Error loading file. Check console for details.");
                 loadingText.style.display = "none";
             }
@@ -107,7 +119,7 @@
             const file = event.target.files[0];
             if (file) {
                 console.log("File selected:", file.name);
-                await loadSplatFile(file);
+                await loadPointCloudFile(file);
             }
         });
     </script>
