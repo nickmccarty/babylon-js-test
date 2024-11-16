@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Babylon.js Splat Viewer</title>
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #fileInput {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+        }
+    </style>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <input type="file" id="fileInput" accept=".splat">
+
+    <script>
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+        let scene;
+        let splatMesh;
+
+        const createScene = async function() {
+            scene = new BABYLON.Scene(engine);
+            
+            // Create a camera
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), scene);
+            camera.attachControl(canvas, true);
+            
+            // Create a light
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+            
+            return scene;
+        };
+
+        const loadSplatFile = async function(file) {
+            if (splatMesh) {
+                splatMesh.dispose();
+            }
+            
+            splatMesh = new BABYLON.GaussianSplatting("splat", scene);
+            await splatMesh.loadFileAsync(file);
+        };
+
+        createScene().then((createdScene) => {
+            scene = createdScene;
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
+        });
+
+        window.addEventListener("resize", () => {
+            engine.resize();
+        });
+
+        const fileInput = document.getElementById("fileInput");
+        fileInput.addEventListener("change", async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                await loadSplatFile(file);
+            }
+        });
+    </script>
+</body>
+</html>
